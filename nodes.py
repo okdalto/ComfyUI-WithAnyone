@@ -374,7 +374,39 @@ class WithAnyoneModelLoaderNode:
         siglip_path = os.path.join(folder_paths.models_dir, "diffusers", siglip_name)
 
         mm.soft_empty_cache()
-        face_extractor = FaceExtractor(model_path="./custom_nodes/ComfyUI-WithAnyone")
+        try:
+            face_extractor = FaceExtractor(model_path="./custom_nodes/ComfyUI-WithAnyone")
+        except AssertionError as e:
+            import shutil
+            import subprocess
+            logger.info("⚠️ AssertionError detected — fixing antelopev2 folder structure...")
+        
+            src = "./custom_nodes/ComfyUI-WithAnyone/models/antelopev2/antelopev2"
+            dest = "./custom_nodes/ComfyUI-WithAnyone/models/antelopev2"
+        
+            if os.path.exists(src):
+                for item in os.listdir(src):
+                    s = os.path.join(src, item)
+                    d = os.path.join(dest, item)
+                    if os.path.exists(d):
+                        if os.path.isdir(d):
+                            shutil.rmtree(d)
+                        else:
+                            os.remove(d)
+                    shutil.move(s, d)
+        
+                # Remove the redundant folder
+                shutil.rmtree(src)
+                logger.info("✅ Folder structure fixed successfully.")
+        
+                # Retry initialization
+                logger.info("🔁 Retrying FaceExtractor initialization...")
+                face_extractor = FaceExtractor(model_path="./custom_nodes/ComfyUI-WithAnyone")
+                logger.info("✅ FaceExtractor initialized successfully.")
+            else:
+                logger.error(f"❌ Source folder not found: {src}")
+                raise e
+
         siglip = SiglipEmbedding(siglip_path=siglip_path)
         pipeline = WithAnyonePipeline(
             "flux-dev",
