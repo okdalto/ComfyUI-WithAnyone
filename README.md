@@ -69,8 +69,7 @@ git clone https://huggingface.co/google/siglip-base-patch16-256-multilingual
 The `WithAnyone Model Loader` will automatically download the **ArcFace** model into  
 `ComfyUI/custom_nodes/ComfyUI-WithAnyone/models/`.
 
-However, there is a known issue:  
-If you encounter an error such as:
+However, there is a known issue. If you encounter an error such as:
 
 ```
 assert 'detection' in self.models
