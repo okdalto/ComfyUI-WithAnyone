@@ -208,7 +208,7 @@ __marimo__/
 
 # Images and large outputs
 *.png
-*.jpg
+
 *.jpeg
 *.gif
 *.pdf
