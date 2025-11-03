@@ -333,9 +333,7 @@ class WithAnyoneModelLoaderNode:
         return ({"pipeline": pipeline, "face_extractor": face_extractor, "siglip": siglip},)
 
 
-# ...existing code...
 
-# ...existing code...
 
 class WithAnyoneSinglePersonConditioningNode:
     """
