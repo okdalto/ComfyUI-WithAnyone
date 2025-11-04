@@ -196,97 +196,6 @@ def resize_bbox(bbox, ori_width, ori_height, new_width, new_height):
 
 
 
-class WithAnyoneSamplerNode:
-    """
-    Custom node: Load Flux-dev checkpoint with optional LoRA and IPA merges
-    """
-
-    @classmethod
-    def INPUT_TYPES(s):
-        return {
-            "required": {
-                "conditioning": ("CONDITIONING", ),
-                "arcface_infos": ("ARCFACE_INFOS", ),
-                "siglip_embeddings": ("SIGLIP_INFOS", ),
-                "withAnyone_pipeline": ("WITHANYONE_PIPELINE", ),
-                "seed": ("INT", {"default": 42}),
-                "num_steps": ("INT", {"default": 25}),
-                "width": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 8}),
-                "height": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 8}),
-                "manual_bboxes": ("STRING", {"default": "192, 192, 576, 576"}),
-                # "weight_dtype": (["default", "fp8_e4m3fn", "fp8_e4m3fn_fast", "fp8_e5m2"],)
-            }
-        }
-    RETURN_NAMES = ("image",)
-    RETURN_TYPES = ("LATENT",)
-    FUNCTION = "main"
-    TITLE = "WithAnyone Sampler"
-
-    def main(self, conditioning, arcface_infos, siglip_embeddings, withAnyone_pipeline, seed, num_steps, width, height, manual_bboxes):
-
-        pbar = ProgressBar(num_steps)
-
-        # Parse manual bboxes
-        bboxes_ = parse_bboxes(manual_bboxes)
-        
-        # If no manual bboxes provided, use automatic captioner
-        if bboxes_ is None:
-            logger.info("No multi-person image or manual bboxes provided. Using automatic captioner.")
-            # Generate automatic bboxes based on image dimensions
-            bboxes__ = captioner(num_person=len(arcface_infos["ref_imgs"]))
-            # resize to width height
-            bboxes_ = [resize_bbox(bbox, 512, 512, width, height) for bbox in bboxes__]
-            
-            logger.info(f"Automatically generated bboxes: {bboxes_}")
-            
-                
-        if not isinstance(conditioning, list) or not conditioning:
-            raise Exception("Invalid conditioning input")
-            
-        if "pooled_output" not in conditioning[0][1]:
-            raise Exception("conditioning lacks 'pooled_output'")
-
-        bboxes = [bboxes_]
-        ref_imgs = arcface_infos["ref_imgs"]
-        arcface_embeddings = arcface_infos["embeddings"]
-        pipeline = withAnyone_pipeline["pipeline"]
-        siglip_embeddings = siglip_embeddings.get("embeddings", siglip_embeddings)
-
-        for box in bboxes[0]:
-            x1,y1,x2,y2 = map(int, box)
-            if x2 - x1 < 4 or y2 - y1 < 4:
-                raise Exception(f"Invalid bbox (too small): {box}")
-
-        if len(ref_imgs) == 0:
-            raise Exception("No reference faces provided.")
-
-        if bboxes is None:
-            raise Exception("Either provide manual bboxes or a multi-person image for bbox extraction")
-
-        if len(bboxes[0]) != len(ref_imgs):
-            raise Exception(f"Number of bboxes ({len(bboxes[0])}) must match number of reference images ({len(ref_imgs)})")
-
-        # Generate image
-        logger.info(f"Generating image of size {width}x{height} with bboxes: {bboxes} ")
-
-        result_latent = pipeline(
-            txt=conditioning[0][0],
-            vec=conditioning[0][1].get("pooled_output"),
-            prompt="",
-            width=width,
-            height=height,
-            guidance=4,
-            num_steps=num_steps,
-            seed=seed,
-            ref_imgs=ref_imgs,
-            arcface_embeddings=arcface_embeddings,
-            siglip_embeddings=siglip_embeddings,
-            bboxes=bboxes,
-            id_weight=1.0,
-            siglip_weight=0.0,
-            pbar = pbar,
-        )
-        return ({"samples": result_latent},)
 
 class WithAnyoneArcFaceExtractorNode:
     """
@@ -424,33 +333,355 @@ class WithAnyoneModelLoaderNode:
         return ({"pipeline": pipeline, "face_extractor": face_extractor, "siglip": siglip},)
 
 
-class WithAnyoneBBoxNode:
+
+
+class WithAnyoneSinglePersonConditioningNode:
     """
-    Custom node: Calculate WithAnyone BBoxes
+    Custom node: WithAnyone Single Person Conditioning
+
+    Inputs:
+        - ref_img: IMAGE
+        - bbox: optional STRING in format "x1_ratio,y1_ratio,x2_ratio,y2_ratio" (0-1 range)
+    Outputs:
+        A dictionary containing person conditioning data
+    """
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
+                "withAnyone_pipeline": ("WITHANYONE_PIPELINE", ),
+                "ref_img": ("IMAGE", {"default": None}),
+            },
+            "optional": {
+                "bbox": ("STRING", {"default": "", "multiline": False}),
+            }
+        }
+    
+    RETURN_NAMES = ("person_conditioning", "debug_bbox_image")
+    RETURN_TYPES = ("PERSON_CONDITIONING", "IMAGE")
+
+    FUNCTION = "main"
+    TITLE = "WithAnyone Single Person Conditioning"
+
+    def main(self, withAnyone_pipeline, ref_img, bbox=""):
+        # Convert ref_img to PIL
+        if ref_img.ndim == 4:
+            pil_img = comfy_tensor_to_pil(ref_img[0:1])
+        else:
+            pil_img = comfy_tensor_to_pil(ref_img)
+
+        # Extract arcface embedding
+        face_extractor = withAnyone_pipeline["face_extractor"]
+        cropped, arcface_embedding = face_extractor.extract(pil_img)
+        if cropped is None or arcface_embedding is None:
+            raise Exception("Failed to extract face from the reference image")
+
+        device = mm.get_torch_device()
+        dtype = mm.unet_dtype()
+        
+        # Ensure arcface_embedding has shape (1, 512)
+        arcface_embedding = torch.as_tensor(arcface_embedding).to(device=device, dtype=dtype)
+        if arcface_embedding.ndim == 1:
+            arcface_embedding = arcface_embedding.unsqueeze(0)
+
+        # Extract siglip embedding
+        siglip = withAnyone_pipeline["siglip"]
+        siglip_embedding = siglip([cropped])
+        siglip_embedding = siglip_embedding.to(device=device, dtype=dtype)
+        
+        # Ensure siglip_embedding has shape (1, 256, 768)
+        if siglip_embedding.ndim == 2:
+            siglip_embedding = siglip_embedding.unsqueeze(0)
+
+        # Parse bbox if provided (relative coordinates 0-1)
+        bbox_list = None
+        if bbox and bbox.strip():
+            try:
+                bbox_list = [float(x.strip()) for x in bbox.strip().split(",")]
+                if len(bbox_list) != 4:
+                    raise ValueError("BBox must have exactly 4 values: x1_ratio,y1_ratio,x2_ratio,y2_ratio")
+                # Validate range
+                for val in bbox_list:
+                    if not (0 <= val <= 1):
+                        raise ValueError("BBox values must be in range [0, 1]")
+            except Exception as e:
+                logger.error(f"Error parsing bbox: {e}")
+                raise Exception(f"Invalid bbox format. Expected 'x1_ratio,y1_ratio,x2_ratio,y2_ratio' (0-1 range), got: {bbox}")
+
+        # Create debug image if bbox is provided
+        if bbox_list:
+            width, height = pil_img.size
+            debug_img = Image.new("RGB", (width, height), color=(255, 255, 255))
+            draw = ImageDraw.Draw(debug_img)
+            # Convert relative to absolute coordinates for visualization
+            x1 = int(bbox_list[0] * width)
+            y1 = int(bbox_list[1] * height)
+            x2 = int(bbox_list[2] * width)
+            y2 = int(bbox_list[3] * height)
+            draw.rectangle([x1, y1, x2, y2], outline="red", width=5)
+            debug_img_tensor = pil_to_comfy_tensor(debug_img)
+        else:
+            # Create a blank debug image
+            debug_img = Image.new("RGB", (512, 512), color=(200, 200, 200))
+            draw = ImageDraw.Draw(debug_img)
+            draw.text((10, 10), "No BBox provided", fill="black")
+            debug_img_tensor = pil_to_comfy_tensor(debug_img)
+
+        person_conditioning = {
+            "arcface_embedding": arcface_embedding,  # (1, 512)
+            "siglip_embedding": siglip_embedding,     # (1, 256, 768)
+            "ref_img": cropped,
+            "bbox": bbox_list,  # [x1_ratio, y1_ratio, x2_ratio, y2_ratio] (0-1) or None
+        }
+
+        return (person_conditioning, debug_img_tensor)
+
+
+class WithAnyoneSamplerNode:
+    """
+    Custom node: WithAnyone Sampler supporting 1-4 persons
     """
 
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
+                "conditioning": ("CONDITIONING", ),
+                "withAnyone_pipeline": ("WITHANYONE_PIPELINE", ),
+                "person1": ("PERSON_CONDITIONING", ),
+                "seed": ("INT", {"default": 42}),
+                "num_steps": ("INT", {"default": 25}),
                 "width": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 8}),
                 "height": ("INT", {"default": 1024, "min": 256, "max": 2048, "step": 8}),
+                "siglip_weight": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 1.0, "step": 0.05}),
+            },
+            "optional": {
+                "person2": ("PERSON_CONDITIONING", ),
+                "person3": ("PERSON_CONDITIONING", ),
+                "person4": ("PERSON_CONDITIONING", ),
+            }
+        }
+    
+    RETURN_NAMES = ("image", "debug_bbox_image")
+    RETURN_TYPES = ("LATENT", "IMAGE")
+    FUNCTION = "main"
+    TITLE = "WithAnyone Sampler"
+
+    def main(self, conditioning, withAnyone_pipeline, person1, seed, num_steps, width, height, siglip_weight, 
+             person2=None, person3=None, person4=None):
+
+        pbar = ProgressBar(num_steps)
+
+        # Validate conditioning
+        if not isinstance(conditioning, list) or not conditioning:
+            raise Exception("Invalid conditioning input")
+            
+        if "pooled_output" not in conditioning[0][1]:
+            raise Exception("conditioning lacks 'pooled_output'")
+
+        # Collect all person conditionings
+        persons = [person1]
+        if person2 is not None:
+            persons.append(person2)
+        if person3 is not None:
+            persons.append(person3)
+        if person4 is not None:
+            persons.append(person4)
+
+        num_persons = len(persons)
+        logger.info(f"Processing {num_persons} person(s)")
+
+        # Merge embeddings and collect data
+        arcface_embeddings_list = []
+        siglip_embeddings_list = []
+        ref_imgs = []
+        bboxes = []
+
+        for idx, person in enumerate(persons):
+            # Extract arcface embedding
+            arcface_emb = person["arcface_embedding"]  # (1, 512) or (512,)
+            if arcface_emb.ndim == 1:
+                arcface_emb = arcface_emb.unsqueeze(0)
+            arcface_embeddings_list.append(arcface_emb)
+
+            # Extract siglip embedding
+            siglip_emb = person["siglip_embedding"]  # (1, 256, 768) or (256, 768)
+            if siglip_emb.ndim == 2:
+                siglip_emb = siglip_emb.unsqueeze(0)
+            siglip_embeddings_list.append(siglip_emb)
+
+            # Collect reference images
+            ref_imgs.append(person["ref_img"])
+
+            # Collect bboxes
+            bbox = person["bbox"]
+            if bbox is not None:
+                if isinstance(bbox, str):
+                    bbox = [float(x.strip()) for x in bbox.strip().split(",")]
+                bboxes.append(bbox)
+            else:
+                bboxes.append(None)
+
+        # Check if all persons have bbox or none have bbox
+        bbox_count = sum(1 for b in bboxes if b is not None)
+        if bbox_count > 0 and bbox_count < num_persons:
+            raise Exception(f"Either all persons must have bboxes or none should have bboxes. Currently {bbox_count}/{num_persons} have bboxes.")
+
+        # If no bboxes provided, use captioner to generate them
+        if bbox_count == 0:
+            logger.info(f"No bboxes provided, using captioner for {num_persons} person(s)")
+            generated_bboxes = captioner(num_person=num_persons)
+            
+            # Convert captioner output (512x512 absolute coords) to target resolution absolute coords
+            for idx in range(num_persons):
+                bbox = generated_bboxes[idx]
+                bbox = resize_bbox(bbox, 512, 512, width, height)
+                bboxes[idx] = bbox
+            
+            logger.info(f"Generated bboxes: {bboxes}")
+        else:
+            # Convert relative coordinates (0-1) to absolute coordinates
+            for idx in range(num_persons):
+                bbox = bboxes[idx]
+                if bbox is not None:
+                    # bbox is in relative coordinates [x1_ratio, y1_ratio, x2_ratio, y2_ratio]
+                    x1 = int(bbox[0] * width)
+                    y1 = int(bbox[1] * height)
+                    x2 = int(bbox[2] * width)
+                    y2 = int(bbox[3] * height)
+                    bboxes[idx] = [x1, y1, x2, y2]
+
+        # Concatenate embeddings along num_refs dimension
+        # arcface: (num_persons, 512)
+        arcface_embeddings = torch.cat(arcface_embeddings_list, dim=0)
+        
+        # siglip: (num_persons, 256, 768)
+        siglip_embeddings = torch.cat(siglip_embeddings_list, dim=0)
+
+        logger.info(f"Merged arcface embeddings shape: {arcface_embeddings.shape}")
+        logger.info(f"Merged siglip embeddings shape: {siglip_embeddings.shape}")
+        logger.info(f"Bounding boxes: {bboxes}")
+
+        # Validate bboxes
+        for idx, box in enumerate(bboxes):
+            x1, y1, x2, y2 = map(int, box)
+            if x2 - x1 < 4 or y2 - y1 < 4:
+                raise Exception(f"Invalid bbox for person {idx+1} (too small): {box}")
+
+        # Create debug image with all bboxes
+        debug_img = Image.new("RGB", (width, height), color=(255, 255, 255))
+        draw = ImageDraw.Draw(debug_img)
+        colors = ["red", "blue", "green", "yellow"]  # Different colors for different persons
+        
+        for idx, bbox in enumerate(bboxes):
+            x1, y1, x2, y2 = map(int, bbox)
+            color = colors[idx % len(colors)]
+            draw.rectangle([x1, y1, x2, y2], outline=color, width=5)
+            # Add person number label
+            try:
+                from PIL import ImageFont
+                font = ImageFont.truetype("arial.ttf", 20)
+            except:
+                font = None
+            draw.text((x1 + 5, y1 + 5), f"P{idx+1}", fill=color, font=font)
+        
+        debug_img_tensor = pil_to_comfy_tensor(debug_img)
+
+        # Prepare bboxes in the format expected by pipeline
+        bboxes_batch = [bboxes]
+
+        pipeline = withAnyone_pipeline["pipeline"]
+
+        # Generate image
+        logger.info(f"Generating image of size {width}x{height} with {num_persons} person(s)")
+
+        result_latent = pipeline(
+            txt=conditioning[0][0],
+            vec=conditioning[0][1].get("pooled_output"),
+            prompt="",
+            width=width,
+            height=height,
+            guidance=4,
+            num_steps=num_steps,
+            seed=seed,
+            ref_imgs=ref_imgs,
+            arcface_embeddings=arcface_embeddings,
+            siglip_embeddings=siglip_embeddings,
+            bboxes=bboxes_batch,
+            id_weight=1.0 - siglip_weight,
+            siglip_weight=0.0 + siglip_weight,
+            pbar=pbar,
+        )
+        
+        return ({"samples": result_latent}, debug_img_tensor)
+
+
+class WithAnyoneBBoxNode:
+    """
+    Custom node: Calculate WithAnyone BBoxes
+    Output format: "x1_ratio,y1_ratio,x2_ratio,y2_ratio" (relative coordinates 0-1)
+    """
+
+    @classmethod
+    def INPUT_TYPES(s):
+        return {
+            "required": {
                 "box_pos_x": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "box_pos_y": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "box_width": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "box_height": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01}),
             }
         }
-    RETURN_NAMES = ("withAnyone_bboxes", "debug_img",)
+    RETURN_NAMES = ("bbox_string", "debug_img",)
     RETURN_TYPES = ("STRING", "IMAGE",)
     FUNCTION = "main"
     TITLE = "WithAnyone BBox Calculator"
 
-    def main(self, width, height, box_pos_x, box_pos_y, box_width, box_height):
-        bboxes = calculate_bboxes(width, height, box_pos_x, box_pos_y, box_width, box_height)
-        debug_img = create_debug_image(bboxes, width, height)
-        debug_img = pil_to_comfy_tensor(debug_img)
-        return (bboxes, debug_img,)
+    def main(self, box_pos_x, box_pos_y, box_width, box_height):
+        # Calculate relative bbox coordinates (0-1 range)
+        x1_ratio = max(0.0, min(1.0, box_pos_x - box_width / 2))
+        y1_ratio = max(0.0, min(1.0, box_pos_y - box_height / 2))
+        x2_ratio = max(0.0, min(1.0, box_pos_x + box_width / 2))
+        y2_ratio = max(0.0, min(1.0, box_pos_y + box_height / 2))
+        
+        # Ensure x2 > x1 and y2 > y1
+        if x2_ratio < x1_ratio:
+            x1_ratio, x2_ratio = x2_ratio, x1_ratio
+        if y2_ratio < y1_ratio:
+            y1_ratio, y2_ratio = y2_ratio, y1_ratio
+        
+        # Format as "x1_ratio,y1_ratio,x2_ratio,y2_ratio"
+        bbox_string = f"{x1_ratio:.4f},{y1_ratio:.4f},{x2_ratio:.4f},{y2_ratio:.4f}"
+        
+        # Create debug image (512x512 for visualization)
+        debug_width, debug_height = 512, 512
+        debug_img = Image.new("RGB", (debug_width, debug_height), color=(255, 255, 255))
+        draw = ImageDraw.Draw(debug_img)
+        
+        # Convert relative to absolute for visualization
+        x1 = int(x1_ratio * debug_width)
+        y1 = int(y1_ratio * debug_height)
+        x2 = int(x2_ratio * debug_width)
+        y2 = int(y2_ratio * debug_height)
+        
+        draw.rectangle([x1, y1, x2, y2], outline="red", width=5)
+        
+        # Add coordinates text
+        try:
+            from PIL import ImageFont
+            font = ImageFont.truetype("arial.ttf", 16)
+        except:
+            font = None
+        draw.text((x1 + 5, y1 + 5), bbox_string, fill="red", font=font)
+        
+        debug_img_tensor = pil_to_comfy_tensor(debug_img)
+        
+        return (bbox_string, debug_img_tensor)
+
+# ...existing code...
+
+# ...existing code...
+
 
 
 NODE_CLASS_MAPPINGS = {
@@ -458,5 +689,6 @@ NODE_CLASS_MAPPINGS = {
     "WithAnyoneSamplerNode": WithAnyoneSamplerNode,
     "WithAnyoneArcFaceExtractorNode": WithAnyoneArcFaceExtractorNode,
     "WithAnyoneSigLIPExtractorNode": WithAnyoneSigLIPExtractorNode,
-    "WithAnyoneBBoxNode": WithAnyoneBBoxNode
+    "WithAnyoneBBoxNode": WithAnyoneBBoxNode,
+    "WithAnyoneSinglePersonConditioningNode": WithAnyoneSinglePersonConditioningNode,
 }

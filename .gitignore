@@ -209,6 +209,8 @@ __marimo__/
 # Images and large outputs
 *.png
 
+!workflow.png
+
 *.jpeg
 *.gif
 *.pdf

@@ -79,8 +79,18 @@ please manually move the downloaded model directory to the correct location unde
 
 ---
 
+## ⚙️ Usage
+
+1. Load workflow by the given `workflow.png` or `workflow_demo.json` files.
+2. Upload 1~4 reference images, each containing a single face.
+3. [Recommended] Use bbox calculation nodes to determine where to place the faces in the output image.
+4. [Recommended] Adjust `siglip_weight` in the Sampler node. Higher values yield better identity consistency but may reduce adherence to the text prompt.
+
+
+---
+
 ## 🚧 TODO
 
-- Currently, this ComfyUI version only supports **single-person** image generation,  
-  while the original WithAnyone model supports **multi-person** scenarios.
+- **LoRA support** are planned for future updates.
 - **Flux Kontext** model support has not yet been tested.
+
