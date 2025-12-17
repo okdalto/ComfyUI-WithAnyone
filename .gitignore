@@ -210,7 +210,7 @@ __marimo__/
 *.png
 
 !workflow.png
-
+!workflow_lora.png
 *.jpeg
 *.gif
 *.pdf

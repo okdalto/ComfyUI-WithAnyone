@@ -270,6 +270,10 @@ class WithAnyoneModelLoaderNode:
                 "ipa_name": (folder_paths.get_filename_list("diffusion_models"), ),
                 "flux_name": (folder_paths.get_filename_list("diffusion_models"), ),
                 "siglip_name": (get_folder_list("diffusers"), ),
+            },
+            "optional": {
+                "lora_name": (["None"] + folder_paths.get_filename_list("loras"), ),
+                "lora_weight": ("FLOAT", {"default": 0.8, "min": 0.0, "max": 1.0, "step": 0.01}),
             }
         }
     RETURN_NAMES = ("withAnyone_pipeline",)
@@ -277,10 +281,15 @@ class WithAnyoneModelLoaderNode:
     FUNCTION = "main"
     TITLE = "WithAnyone Model Loader"
 
-    def main(self, ipa_name, flux_name, siglip_name):
+    def main(self, ipa_name, flux_name, siglip_name, lora_name="None", lora_weight=0.8):
         ipa_path = os.path.join(folder_paths.models_dir, "diffusion_models", ipa_name)
         flux_path = os.path.join(folder_paths.models_dir, "diffusion_models", flux_name)
         siglip_path = os.path.join(folder_paths.models_dir, "diffusers", siglip_name)
+
+        lora_path = None
+        if lora_name != "None":
+            lora_path = folder_paths.get_full_path("loras", lora_name)
+            logger.info(f"Loading LoRA: {lora_path} with weight {lora_weight}")
 
         mm.soft_empty_cache()
         try:
@@ -325,12 +334,13 @@ class WithAnyoneModelLoaderNode:
             only_lora=True,
             no_lora=True,
             lora_rank=64,
-            additional_lora_ckpt=None,
-            lora_weight=1.0,
+            additional_lora_ckpt=lora_path,
+            lora_weight=lora_weight,
             flux_path=flux_path,
             # siglip_path=siglip_path,
         )
         return ({"pipeline": pipeline, "face_extractor": face_extractor, "siglip": siglip},)
+
 
 
 

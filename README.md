@@ -85,12 +85,9 @@ please manually move the downloaded model directory to the correct location unde
 2. Upload 1~4 reference images, each containing a single face.
 3. [Recommended] Use bbox calculation nodes to determine where to place the faces in the output image.
 4. [Recommended] Adjust `siglip_weight` in the Sampler node. Higher values yield better identity consistency but may reduce adherence to the text prompt.
+5. [Recommended] Add a LoRA like in `workflow_lora.png`
 
 
 ---
 
-## 🚧 TODO
-
-- **LoRA support** are planned for future updates.
-- **Flux Kontext** model support has not yet been tested.
 
