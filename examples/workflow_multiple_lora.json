@@ -1,0 +1,928 @@
+{
+  "id": "332e9c1f-1ba4-47b5-b6fa-18d85d184c9e",
+  "revision": 0,
+  "last_node_id": 34,
+  "last_link_id": 52,
+  "nodes": [
+    {
+      "id": 6,
+      "type": "VAELoader",
+      "pos": [
+        -844.8230849826842,
+        473.7027461134582
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "slot_index": 0,
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "diffusion_pytorch_model.safetensors"
+      ]
+    },
+    {
+      "id": 16,
+      "type": "LoadImage",
+      "pos": [
+        -470.15919480431984,
+        360.4311251755242
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            38
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "1_after copy.png",
+        "image"
+      ]
+    },
+    {
+      "id": 9,
+      "type": "LoadImage",
+      "pos": [
+        -468.22648184545176,
+        -10.820410400145128
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            44
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "00001__001.png",
+        "image"
+      ]
+    },
+    {
+      "id": 22,
+      "type": "LoadImage",
+      "pos": [
+        -469.8581008850735,
+        734.216589305288
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            42
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "26CFAU5ILR_1.jpg",
+        "image"
+      ]
+    },
+    {
+      "id": 1,
+      "type": "DualCLIPLoader",
+      "pos": [
+        -846.3162155478852,
+        288.93570351938405
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "slot_index": 0,
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "DualCLIPLoader"
+      },
+      "widgets_values": [
+        "clip_l.safetensors",
+        "t5xxl_fp16.safetensors",
+        "flux",
+        "default"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "CLIPTextEncode",
+      "pos": [
+        420.75902732595523,
+        -61.276621134787355
+      ],
+      "size": [
+        322.010705556022,
+        175.6284835468856
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "slot_index": 0,
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "a vibrant digital anime-style illustration of ladies in the style of cksc."
+      ]
+    },
+    {
+      "id": 3,
+      "type": "WithAnyoneSamplerNode",
+      "pos": [
+        420.3340978291722,
+        165.19470050133265
+      ],
+      "size": [
+        317.4000244140625,
+        278
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 2
+        },
+        {
+          "name": "withAnyone_pipeline",
+          "type": "WITHANYONE_PIPELINE",
+          "link": 15
+        },
+        {
+          "name": "person1",
+          "type": "PERSON_CONDITIONING",
+          "link": 48
+        },
+        {
+          "name": "person2",
+          "shape": 7,
+          "type": "PERSON_CONDITIONING",
+          "link": 49
+        },
+        {
+          "name": "person3",
+          "shape": 7,
+          "type": "PERSON_CONDITIONING",
+          "link": 50
+        },
+        {
+          "name": "person4",
+          "shape": 7,
+          "type": "PERSON_CONDITIONING",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "LATENT",
+          "slot_index": 0,
+          "links": [
+            3
+          ]
+        },
+        {
+          "name": "debug_bbox_image",
+          "type": "IMAGE",
+          "slot_index": 1,
+          "links": [
+            19
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneSamplerNode"
+      },
+      "widgets_values": [
+        1891,
+        "randomize",
+        25,
+        1024,
+        1024,
+        0.5
+      ]
+    },
+    {
+      "id": 4,
+      "type": "VAEDecode",
+      "pos": [
+        423.84782268648576,
+        491.9489443867648
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 3
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 5,
+      "type": "PreviewImage",
+      "pos": [
+        421.88776974994454,
+        587.5181643262157
+      ],
+      "size": [
+        397.26889095470074,
+        438.40660622007795
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 4
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 14,
+      "type": "PreviewImage",
+      "pos": [
+        839.1612523463511,
+        593.0688038711477
+      ],
+      "size": [
+        210,
+        246.00000000000003
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 19
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.4.0",
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 32,
+      "type": "WithAnyoneBBoxNode",
+      "pos": [
+        -62.03383061218917,
+        -5.460453743750307
+      ],
+      "size": [
+        289.1255859375,
+        150
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "bbox_string",
+          "type": "STRING",
+          "links": [
+            47
+          ]
+        },
+        {
+          "name": "debug_img",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneBBoxNode"
+      },
+      "widgets_values": [
+        0.15,
+        0.5,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "id": 29,
+      "type": "WithAnyoneSinglePersonConditioningNode",
+      "pos": [
+        -58.53126590951772,
+        199.80580373268802
+      ],
+      "size": [
+        362.7828125,
+        78
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "withAnyone_pipeline",
+          "type": "WITHANYONE_PIPELINE",
+          "link": 39
+        },
+        {
+          "name": "ref_img",
+          "type": "IMAGE",
+          "link": 44
+        },
+        {
+          "name": "bbox",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "bbox"
+          },
+          "link": 47
+        }
+      ],
+      "outputs": [
+        {
+          "name": "person_conditioning",
+          "type": "PERSON_CONDITIONING",
+          "links": [
+            48
+          ]
+        },
+        {
+          "name": "debug_bbox_image",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneSinglePersonConditioningNode"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 33,
+      "type": "WithAnyoneBBoxNode",
+      "pos": [
+        -61.70724905706144,
+        365.1078124590997
+      ],
+      "size": [
+        289.1255859375,
+        150
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "bbox_string",
+          "type": "STRING",
+          "links": [
+            51
+          ]
+        },
+        {
+          "name": "debug_img",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneBBoxNode"
+      },
+      "widgets_values": [
+        0.48,
+        0.35,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "id": 30,
+      "type": "WithAnyoneSinglePersonConditioningNode",
+      "pos": [
+        -58.46641083445333,
+        568.4691828695065
+      ],
+      "size": [
+        362.7828125,
+        78
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "withAnyone_pipeline",
+          "type": "WITHANYONE_PIPELINE",
+          "link": 40
+        },
+        {
+          "name": "ref_img",
+          "type": "IMAGE",
+          "link": 38
+        },
+        {
+          "name": "bbox",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "bbox"
+          },
+          "link": 51
+        }
+      ],
+      "outputs": [
+        {
+          "name": "person_conditioning",
+          "type": "PERSON_CONDITIONING",
+          "links": [
+            49
+          ]
+        },
+        {
+          "name": "debug_bbox_image",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneSinglePersonConditioningNode"
+      },
+      "widgets_values": [
+        ""
+      ]
+    },
+    {
+      "id": 34,
+      "type": "WithAnyoneBBoxNode",
+      "pos": [
+        -60.82504238490087,
+        739.7661336072746
+      ],
+      "size": [
+        289.1255859375,
+        150
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "bbox_string",
+          "type": "STRING",
+          "links": [
+            52
+          ]
+        },
+        {
+          "name": "debug_img",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneBBoxNode"
+      },
+      "widgets_values": [
+        0.85,
+        0.3,
+        0.3,
+        0.4
+      ]
+    },
+    {
+      "id": 7,
+      "type": "WithAnyoneModelLoaderNode",
+      "pos": [
+        -844.2702247519468,
+        591.0714947159591
+      ],
+      "size": [
+        315,
+        154
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "withAnyone_pipeline",
+          "type": "WITHANYONE_PIPELINE",
+          "slot_index": 0,
+          "links": [
+            15,
+            39,
+            40,
+            41
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneModelLoaderNode"
+      },
+      "widgets_values": [
+        "withanyone.safetensors",
+        "flux1-dev.safetensors",
+        "siglip-base-patch16-256-multilingual",
+        "ck-shadow-circuit-000021.safetensors",
+        1
+      ]
+    },
+    {
+      "id": 31,
+      "type": "WithAnyoneSinglePersonConditioningNode",
+      "pos": [
+        -59.71130038059226,
+        939.0767137358854
+      ],
+      "size": [
+        362.7828125,
+        78
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "withAnyone_pipeline",
+          "type": "WITHANYONE_PIPELINE",
+          "link": 41
+        },
+        {
+          "name": "ref_img",
+          "type": "IMAGE",
+          "link": 42
+        },
+        {
+          "name": "bbox",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "bbox"
+          },
+          "link": 52
+        }
+      ],
+      "outputs": [
+        {
+          "name": "person_conditioning",
+          "type": "PERSON_CONDITIONING",
+          "links": [
+            50
+          ]
+        },
+        {
+          "name": "debug_bbox_image",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-WithAnyone",
+        "ver": "765152c3e2bb03927fd123b9221860baae38cb57",
+        "Node name for S&R": "WithAnyoneSinglePersonConditioningNode"
+      },
+      "widgets_values": [
+        ""
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      2,
+      0,
+      "CLIP"
+    ],
+    [
+      2,
+      2,
+      0,
+      3,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      0,
+      "LATENT"
+    ],
+    [
+      4,
+      4,
+      0,
+      5,
+      0,
+      "IMAGE"
+    ],
+    [
+      5,
+      6,
+      0,
+      4,
+      1,
+      "VAE"
+    ],
+    [
+      15,
+      7,
+      0,
+      3,
+      1,
+      "WITHANYONE_PIPELINE"
+    ],
+    [
+      19,
+      3,
+      1,
+      14,
+      0,
+      "IMAGE"
+    ],
+    [
+      38,
+      16,
+      0,
+      30,
+      1,
+      "IMAGE"
+    ],
+    [
+      39,
+      7,
+      0,
+      29,
+      0,
+      "WITHANYONE_PIPELINE"
+    ],
+    [
+      40,
+      7,
+      0,
+      30,
+      0,
+      "WITHANYONE_PIPELINE"
+    ],
+    [
+      41,
+      7,
+      0,
+      31,
+      0,
+      "WITHANYONE_PIPELINE"
+    ],
+    [
+      42,
+      22,
+      0,
+      31,
+      1,
+      "IMAGE"
+    ],
+    [
+      44,
+      9,
+      0,
+      29,
+      1,
+      "IMAGE"
+    ],
+    [
+      47,
+      32,
+      0,
+      29,
+      2,
+      "STRING"
+    ],
+    [
+      48,
+      29,
+      0,
+      3,
+      2,
+      "PERSON_CONDITIONING"
+    ],
+    [
+      49,
+      30,
+      0,
+      3,
+      3,
+      "PERSON_CONDITIONING"
+    ],
+    [
+      50,
+      31,
+      0,
+      3,
+      4,
+      "PERSON_CONDITIONING"
+    ],
+    [
+      51,
+      33,
+      0,
+      30,
+      2,
+      "STRING"
+    ],
+    [
+      52,
+      34,
+      0,
+      31,
+      2,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6686603901544595,
+      "offset": [
+        1206.9886159370021,
+        255.0962953018263
+      ]
+    },
+    "workflowRendererVersion": "LG",
+    "ue_links": [],
+    "frontendVersion": "1.34.9"
+  },
+  "version": 0.4
+}
